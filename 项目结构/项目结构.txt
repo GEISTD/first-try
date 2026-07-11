@@ -1,0 +1,13 @@
+calculator/
+
+├── main.cpp
+
+├── parser.cpp / parser.h
+
+├── math_functions.cpp / math_functions.h
+
+├── history_manager.cpp / history_manager.h
+
+├── build.bat
+
+└── input.txt
