@@ -1,0 +1,150 @@
+================================================================================
+            Git 双推配置完整记录（Gitee + GitHub）
+            日期：2026-09-16
+            作者：GEISTD
+================================================================================
+
+--------------------------------------------------------------------------------
+一、背景与目标
+--------------------------------------------------------------------------------
+- 本地已有项目（计算器 calculator），最初放在 D 盘
+- Gitee 仓库：https://gitee.com/Geist1/calculator.git
+- GitHub 仓库：https://github.com/GEISTD/first-try.git
+- 目标：把 Gitee 的代码同步到 GitHub，以后改代码能同时推两个平台
+
+--------------------------------------------------------------------------------
+二、远程仓库配置（git remote）
+--------------------------------------------------------------------------------
+查看当前远程：
+    git remote -v
+
+配置结果：
+    origin  → https://gitee.com/Geist1/calculator.git   (Gitee，国内快，日常用)
+    github  → git@github.com:GEISTD/first-try.git       (GitHub，SSH，展示用)
+
+添加 / 修改远程地址：
+    git remote add github https://github.com/GEISTD/first-try.git
+    git remote set-url github git@github.com:GEISTD/first-try.git
+    git remote remove github   # 如果配置乱了，先删再重新加
+
+--------------------------------------------------------------------------------
+三、踩坑记录：ghproxy 代理问题
+--------------------------------------------------------------------------------
+现象：明明改了 github 地址为直连，push 时依然报 ghproxy.com 连接错误。
+
+原因：之前配置过代理重写规则（insteadOf）和全局 http.proxy，修改 remote 不生效。
+
+解决方法（彻底清除代理）：
+    git config --global --unset http.proxy
+    git config --global --unset https.proxy
+    git config --global --unset url."https://ghproxy.com/https://github.com/".insteadOf
+    git config --global --unset url."https://ghproxy.net/https://github.com/".insteadOf
+
+    # 清除终端环境变量
+    Remove-Item Env:\http_proxy,Env:\https_proxy,Env:\HTTP_PROXY,Env:\HTTPS_PROXY -ErrorAction SilentlyContinue
+
+验证是否清除干净：
+    git config --global --get http.proxy   # 无输出 = 干净
+    git remote -v                          # github 不应含 ghproxy
+
+--------------------------------------------------------------------------------
+四、SSH 密钥配置（关键步骤）
+--------------------------------------------------------------------------------
+生成 SSH 密钥：
+    ssh-keygen -t ed25519 -C "你的GitHub邮箱"
+    （一路回车，不设密码）
+
+查看并复制公钥：
+    Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | Set-Clipboard
+
+把公钥添加到 GitHub：
+    GitHub → Settings → SSH and GPG keys → New SSH key → 粘贴 → Add
+
+验证 SSH 连接：
+    ssh -T git@github.com
+    成功提示：Hi GEISTD! You've successfully authenticated...
+
+--------------------------------------------------------------------------------
+五、从 Gitee 克隆到本地（迁移到 C 盘）
+--------------------------------------------------------------------------------
+因为 HTTPS 直连 GitHub 不稳定，改用 SSH；先把 Gitee 代码克隆到本地：
+
+    cd ~
+    mkdir gh_sync
+    cd gh_sync
+    git clone https://gitee.com/Geist1/calculator.git
+    cd calculator
+
+确认分支：
+    git branch   # 显示 * master
+
+推送本地代码到 GitHub（SSH）：
+    git push github master
+
+--------------------------------------------------------------------------------
+六、GitHub CLI（gh）安装与登录
+--------------------------------------------------------------------------------
+安装：
+    winget install --id GitHub.cli
+
+启动登录：
+    gh auth login
+    选择：GitHub.com → SSH → Skip(上传密钥) → Paste an authentication token
+
+如果浏览器授权失败（国内网络），改用 Token：
+1. 浏览器打开镜像：https://kgithub.com/settings/tokens
+2. 生成 Token（勾选 repo, workflow, read:org）
+3. 复制 ghp_xxx，粘贴到终端
+
+--------------------------------------------------------------------------------
+七、网络问题的正确姿势
+--------------------------------------------------------------------------------
+✅ 正确做法：
+    - 清 DNS：ipconfig /flushdns
+    - 用镜像访问：kgithub.com / bgithub.xyz
+    - SSH 方式推送（比 HTTPS 稳）
+    - 放行防火墙规则，而不是关闭防火墙
+
+❌ 错误做法：
+    - 为了访问 GitHub 关闭 Windows 防火墙（安全风险）
+    - 反复修改 remote 但不清代理（治标不治本）
+
+恢复防火墙（安全第一）：
+    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+
+--------------------------------------------------------------------------------
+八、最终工作流（日常使用）
+--------------------------------------------------------------------------------
+进入项目目录：
+    cd C:\Users\29681\gh_sync\calculator
+
+修改代码后提交：
+    git add .
+    git commit -m "描述这次改了什么"
+
+推送到 Gitee（国内快，日常）：
+    git push origin master
+
+推送到 GitHub（展示/备份）：
+    git push github master
+
+--------------------------------------------------------------------------------
+九、核心概念总结
+--------------------------------------------------------------------------------
+1. git commit = 本地存档（不上传）
+2. git push   = 才决定上传到哪里
+3. origin     = Gitee（默认远程）
+4. github     = GitHub（第二个远程）
+5. SSH Key    = 长期通行证，不用每次输密码
+6. 防火墙开着不影响 git push（只要放行规则正确）
+
+--------------------------------------------------------------------------------
+十、一句话心得
+--------------------------------------------------------------------------------
+> "Git 仓库在哪，哪里就是家。"
+> 现在"家"在 C:\Users\29681\gh_sync\calculator
+> 以后就在这里改、commit、push。
+
+================================================================================
+                                 — END —
+================================================================================
